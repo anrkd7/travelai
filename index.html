@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>글로벌 여행 가이드 AI</title>
+  <meta name="description" content="AI가 추천하는 전 세계 여행 정보 — 위치, 시차, 환율, 관광지를 한눈에 확인하세요." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- Animated background particles -->
+  <div class="bg-particles" id="bgParticles"></div>
+
+  <!-- Floating globe decoration -->
+  <div class="globe-decoration">🌍</div>
+
+  <div class="app-wrapper">
+
+    <!-- Header -->
+    <header class="app-header">
+      <div class="header-inner">
+        <div class="logo-group">
+          <div class="logo-icon">✈️</div>
+          <div class="logo-text">
+            <span class="logo-title">글로벌 여행 가이드</span>
+            <span class="logo-sub">AI Travel Assistant</span>
+          </div>
+        </div>
+        <div class="header-badges">
+          <span class="badge badge-live">● LIVE</span>
+          <span class="badge badge-lang">🇰🇷 한국어</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Chat Container -->
+    <main class="chat-container" id="chatContainer">
+
+      <!-- Welcome Message -->
+      <div class="message ai-message" id="welcomeMsg">
+        <div class="avatar ai-avatar">🤖</div>
+        <div class="bubble ai-bubble">
+          <div class="bubble-header">
+            <span class="sender-name">글로벌 여행 가이드</span>
+            <span class="timestamp" id="welcomeTime"></span>
+          </div>
+          <div class="bubble-content">
+            <p class="greeting-main">안녕하세요! 저는 여러분의 <strong>글로벌 여행 가이드 AI</strong>입니다 🌏</p>
+            <p>궁금한 나라나 도시를 입력해 주시면, 아래 정보를 자세히 안내해 드릴게요!</p>
+            <div class="info-chips">
+              <span class="chip">📍 위치 &amp; 지리</span>
+              <span class="chip">⏰ KST 시차</span>
+              <span class="chip">💵 환율 정보</span>
+              <span class="chip">🗼 추천 관광지</span>
+            </div>
+          </div>
+          <div class="quick-btns">
+            <p class="quick-label">💡 빠른 검색:</p>
+            <div class="quick-grid">
+              <button class="quick-btn" onclick="sendQuick('프랑스')">🇫🇷 프랑스</button>
+              <button class="quick-btn" onclick="sendQuick('영국')">🇬🇧 영국</button>
+              <button class="quick-btn" onclick="sendQuick('미국')">🇺🇸 미국</button>
+              <button class="quick-btn" onclick="sendQuick('일본')">🇯🇵 일본</button>
+              <button class="quick-btn" onclick="sendQuick('이탈리아')">🇮🇹 이탈리아</button>
+              <button class="quick-btn" onclick="sendQuick('스위스')">🇨🇭 스위스</button>
+              <button class="quick-btn" onclick="sendQuick('네덜란드')">🇳🇱 네덜란드</button>
+              <button class="quick-btn" onclick="sendQuick('싱가포르')">🇸🇬 싱가포르</button>
+              <button class="quick-btn" onclick="sendQuick('멕시코')">🇲🇽 멕시코</button>
+              <button class="quick-btn" onclick="sendQuick('터키')">🇹🇷 터키</button>
+              <button class="quick-btn" onclick="sendQuick('대만')">🇹🇼 대만</button>
+              <button class="quick-btn" onclick="sendQuick('필리핀')">🇵🇭 필리핀</button>
+              <button class="quick-btn" onclick="sendQuick('말레이시아')">🇲🇾 말레이시아</button>
+              <button class="quick-btn" onclick="sendQuick('인도네시아')">🇮🇩 인도네시아</button>
+              <button class="quick-btn" onclick="sendQuick('남아프리카공화국')">🇿🇦 남아공</button>
+              <button class="quick-btn" onclick="sendQuick('그리스')">🇬🇷 그리스</button>
+              <button class="quick-btn" onclick="sendQuick('오스트리아')">🇦🇹 오스트리아</button>
+              <button class="quick-btn" onclick="sendQuick('헝가리')">🇭🇺 헝가리</button>
+              <button class="quick-btn" onclick="sendQuick('체코')">🇨🇿 체코</button>
+              <button class="quick-btn" onclick="sendQuick('아르헨티나')">🇦🇷 아르헨티나</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Messages injected here by JS -->
+    </main>
+
+    <!-- Input Area -->
+    <footer class="input-area">
+      <div class="input-inner">
+        <div class="input-wrapper">
+          <span class="input-icon">🌐</span>
+          <input
+            type="text"
+            id="userInput"
+            class="chat-input"
+            placeholder="나라 또는 도시를 입력하세요 (예: 일본, 파리, 뉴욕…)"
+            autocomplete="off"
+            maxlength="100"
+          />
+          <button class="send-btn" id="sendBtn" onclick="handleSend()" title="전송">
+            <span class="send-icon">➤</span>
+          </button>
+        </div>
+        <p class="input-hint">Enter 키 또는 버튼을 눌러 검색하세요</p>
+      </div>
+    </footer>
+
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
