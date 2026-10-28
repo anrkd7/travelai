@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>글로벌 여행 가이드 AI</title>
+  <meta name="description" content="AI가 추천하는 전 세계 여행 정보 — 위치, 시차, 환율, 관광지를 한눈에 확인하세요." />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --primary: #3b82f6;
+      --primary-light: #60a5fa;
+      --accent: #06b6d4;
+      --accent2: #8b5cf6;
+      --gold: #f59e0b;
+      --success: #10b981;
+      --text-main: #e2e8f0;
+      --text-muted: #94a3b8;
+      --text-dim: #64748b;
+      --border: rgba(255,255,255,0.1);
+      --radius-sm: 10px;
+      --radius-md: 18px;
+      --radius-xl: 40px;
+      --transition: 0.25s cubic-bezier(0.4,0,0.2,1);
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Noto Sans KR', sans-serif;
+      background: #0d062a;
+      color: var(--text-main);
+      min-height: 100vh;
+      overflow-x: hidden;
+      line-height: 1.6;
+    }
+
+    /* 배경 그라디언트 */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: linear-gradient(180deg,
+        #0d062a 0%, #1c0a4a 7%, #3a0f75 16%,
+        #7a1870 26%, #b03060 35%, #cb3e2e 44%,
+        #e05e1a 53%, #ee8a20 61%, #f5ab38 68%,
+        #f8c850 76%, #fada70 83%, #fde890 90%, #fff0b0 100%
+      );
+      pointer-events: none;
+      z-index: 0;
+      animation: skyShift 20s ease-in-out infinite alternate;
+    }
+    @keyframes skyShift {
+      0%   { opacity: 1;    filter: saturate(1); }
+      50%  { opacity: 0.92; filter: saturate(1.12); }
+      100% { opacity: 1;    filter: saturate(0.95); }
+    }
+
+    .globe-decoration {
+      position: fixed;
+      right: -60px; top: 50%;
+      transform: translateY(-50%);
+      font-size: 280px;
+      opacity: 0.03;
+      pointer-events: none;
+      z-index: 0;
+      animation: slowSpin 60s linear infinite;
+      filter: blur(2px);
+    }
+    @keyframes slowSpin {
+      from { transform: translateY(-50%) rotate(0deg); }
+      to   { transform: translateY(-50%) rotate(360deg); }
+    }
+
+    /* ─── 레이아웃 ─── */
+    .app-wrapper {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    /* ─── 헤더 ─── */
+    .app-header {
+      background: rgba(10,15,30,0.9);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 24px;
+      flex-shrink: 0;
+      position: relative;
+    }
+    .app-header::after {
+      content: '';
+      position: absolute;
+      bottom: 0; left: 0; right: 0; height: 1px;
+      background: linear-gradient(90deg, transparent, var(--primary), var(--accent), transparent);
+      opacity: 0.5;
+    }
+    .header-inner { display: flex; align-items: center; justify-content: space-between; }
+    .logo-group { display: flex; align-items: center; gap: 12px; }
+    .logo-icon { font-size: 32px; animation: planeFly 3s ease-in-out infinite; display: inline-block; }
+    @keyframes planeFly {
+      0%,100% { transform: translateY(0) rotate(-5deg); }
+      50% { transform: translateY(-4px) rotate(5deg); }
+    }
+    .logo-text { display: flex; flex-direction: column; }
+    .logo-title {
+      font-family: 'Outfit', sans-serif; font-weight: 800; font-size: 20px;
+      background: linear-gradient(135deg, #60a5fa, #06b6d4, #8b5cf6);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    }
+    .logo-sub { font-size: 11px; color: var(--text-dim); font-family: 'Outfit', sans-serif; }
+    .header-badges { display: flex; gap: 8px; align-items: center; }
+    .badge { font-size: 11px; padding: 4px 10px; border-radius: 20px; font-weight: 600; }
+    .badge-live {
+      background: rgba(16,185,129,0.15); color: var(--success);
+      border: 1px solid rgba(16,185,129,0.3);
+      animation: livePulse 2s ease-in-out infinite;
+    }
+    @keyframes livePulse { 0%,100%{opacity:1} 50%{opacity:0.6} }
+    .badge-lang { background: rgba(255,255,255,0.04); color: var(--text-muted); border: 1px solid var(--border); }
+
+    /* ─── 채팅 영역 ─── */
+    .chat-container {
+      flex: 1; overflow-y: auto; padding: 24px 20px;
+      display: flex; flex-direction: column; gap: 20px; scroll-behavior: smooth;
+    }
+    .chat-container::-webkit-scrollbar { width: 6px; }
+    .chat-container::-webkit-scrollbar-track { background: transparent; }
+    .chat-container::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
+
+    /* ─── 메시지 ─── */
+    .message { display: flex; gap: 12px; animation: msgIn 0.4s cubic-bezier(0.16,1,0.3,1) both; }
+    @keyframes msgIn { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
+    .user-message { flex-direction: row-reverse; }
+
+    .avatar {
+      width: 40px; height: 40px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px; flex-shrink: 0;
+    }
+    .ai-avatar { background: linear-gradient(135deg,#1e3a5f,#0e2341); border: 2px solid rgba(96,165,250,0.3); }
+    .user-avatar { background: linear-gradient(135deg,#3b1e5f,#200e40); border: 2px solid rgba(139,92,246,0.3); }
+
+    .bubble {
+      max-width: 78%; border-radius: var(--radius-md);
+      padding: 16px 20px; position: relative; word-break: break-word;
+    }
+    .ai-bubble {
+      background: linear-gradient(135deg, rgba(15,24,48,0.95), rgba(10,20,40,0.95));
+      border: 1px solid rgba(96,165,250,0.18);
+      box-shadow: 0 6px 30px rgba(6,182,212,0.15);
+    }
+    .user-bubble {
+      background: linear-gradient(135deg, rgba(59,130,246,0.2), rgba(139,92,246,0.15));
+      border: 1px solid rgba(139,92,246,0.25);
+      text-align: right;
+    }
+    .bubble-header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+    .sender-name { font-size: 12px; font-weight: 700; color: var(--primary-light); }
+    .timestamp { font-size: 10px; color: var(--text-dim); }
+    .bubble-content p { margin-bottom: 8px; }
+    .bubble-content p:last-child { margin-bottom: 0; }
+    .greeting-main { font-size: 15px; font-weight: 500; }
+
+    /* ─── 칩 ─── */
+    .info-chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
+    .chip {
+      background: rgba(59,130,246,0.12); border: 1px solid rgba(59,130,246,0.25);
+      color: var(--primary-light); padding: 5px 12px; border-radius: 20px;
+      font-size: 12px; font-weight: 500;
+    }
+
+    /* ─── 빠른 검색 버튼 ─── */
+    .quick-btns { border-top: 1px solid var(--border); margin-top: 14px; padding-top: 14px; }
+    .quick-label { font-size: 12px; color: var(--text-muted); margin-bottom: 10px !important; }
+    .quick-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+    .quick-btn {
+      background: rgba(255,255,255,0.06);
+      border: 1px solid var(--border);
+      color: var(--text-main);
+      padding: 7px 14px;
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      font-family: 'Noto Sans KR', sans-serif;
+      cursor: pointer;
+      transition: all var(--transition);
+    }
+    .quick-btn:hover {
+      background: rgba(59,130,246,0.2);
+      border-color: rgba(59,130,246,0.5);
+      color: #fff;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(59,130,246,0.25);
+    }
+    .quick-btn:active { transform: translateY(0); }
+
+    /* ─── 입력 영역 ─── */
+    .input-area {
+      background: rgba(10,15,30,0.92);
+      backdrop-filter: blur(20px);
+      border-top: 1px solid var(--border);
+      padding: 16px 20px;
+      flex-shrink: 0;
+    }
+    .input-inner { display: flex; flex-direction: column; gap: 6px; }
+    .input-wrapper {
+      display: flex; align-items: center; gap: 10px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: var(--radius-xl);
+      padding: 10px 10px 10px 18px;
+      transition: border-color var(--transition), box-shadow var(--transition);
+    }
+    .input-wrapper:focus-within {
+      border-color: rgba(59,130,246,0.5);
+      box-shadow: 0 0 0 3px rgba(59,130,246,0.08);
+    }
+    .input-icon { font-size: 18px; flex-shrink: 0; }
+    .chat-input {
+      flex: 1; background: none; border: none; outline: none;
+      color: var(--text-main); font-size: 14px;
+      font-family: 'Noto Sans KR', sans-serif;
+      caret-color: var(--primary-light);
+    }
+    .chat-input::placeholder { color: var(--text-dim); }
+    .send-btn {
+      width: 42px; height: 42px; border-radius: 50%; border: none;
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      color: #fff; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px; flex-shrink: 0;
+      transition: all var(--transition);
+      box-shadow: 0 4px 12px rgba(59,130,246,0.35);
+    }
+    .send-btn:hover { transform: scale(1.08) rotate(10deg); box-shadow: 0 6px 20px rgba(59,130,246,0.5); }
+    .send-btn:active { transform: scale(0.95); }
+    .input-hint { font-size: 11px; color: var(--text-dim); text-align: center; }
+
+    /* ─── 반응형 ─── */
+    @media (max-width: 600px) {
+      .app-header { padding: 12px 16px; }
+      .logo-title { font-size: 16px; }
+      .chat-container { padding: 16px 12px; }
+      .bubble { max-width: 92%; padding: 14px 16px; }
+      .header-badges { display: none; }
+      .quick-btn { font-size: 12px; padding: 6px 11px; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="globe-decoration">🌍</div>
+
+  <div class="app-wrapper">
+
+    <!-- 헤더 -->
+    <header class="app-header">
+      <div class="header-inner">
+        <div class="logo-group">
+          <div class="logo-icon">✈️</div>
+          <div class="logo-text">
+            <span class="logo-title">글로벌 여행 가이드</span>
+            <span class="logo-sub">AI Travel Assistant</span>
+          </div>
+        </div>
+        <div class="header-badges">
+          <span class="badge badge-live">● LIVE</span>
+          <span class="badge badge-lang">🇰🇷 한국어</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- 채팅 컨테이너 -->
+    <main class="chat-container" id="chatContainer">
+      <div class="message ai-message">
+        <div class="avatar ai-avatar">🤖</div>
+        <div class="bubble ai-bubble">
+          <div class="bubble-header">
+            <span class="sender-name">글로벌 여행 가이드</span>
+            <span class="timestamp" id="welcomeTime"></span>
+          </div>
+          <div class="bubble-content">
+            <p class="greeting-main">안녕하세요! 저는 여러분의 <strong>글로벌 여행 가이드 AI</strong>입니다 🌏</p>
+            <p>궁금한 나라나 도시를 입력해 주시면, 아래 정보를 자세히 안내해 드릴게요!</p>
+            <div class="info-chips">
+              <span class="chip">📍 위치 &amp; 지리</span>
+              <span class="chip">⏰ KST 시차</span>
+              <span class="chip">💵 환율 정보</span>
+              <span class="chip">🗼 추천 관광지</span>
+            </div>
+          </div>
+          <div class="quick-btns">
+            <p class="quick-label">💡 빠른 검색:</p>
+            <div class="quick-grid">
+              <button class="quick-btn" onclick="sendQuick('프랑스')">🇫🇷 프랑스</button>
+              <button class="quick-btn" onclick="sendQuick('영국')">🇬🇧 영국</button>
+              <button class="quick-btn" onclick="sendQuick('미국')">🇺🇸 미국</button>
+              <button class="quick-btn" onclick="sendQuick('일본')">🇯🇵 일본</button>
+              <button class="quick-btn" onclick="sendQuick('이탈리아')">🇮🇹 이탈리아</button>
+              <button class="quick-btn" onclick="sendQuick('스위스')">🇨🇭 스위스</button>
+              <button class="quick-btn" onclick="sendQuick('네덜란드')">🇳🇱 네덜란드</button>
+              <button class="quick-btn" onclick="sendQuick('싱가포르')">🇸🇬 싱가포르</button>
+              <button class="quick-btn" onclick="sendQuick('멕시코')">🇲🇽 멕시코</button>
+              <button class="quick-btn" onclick="sendQuick('터키')">🇹🇷 터키</button>
+              <button class="quick-btn" onclick="sendQuick('대만')">🇹🇼 대만</button>
+              <button class="quick-btn" onclick="sendQuick('필리핀')">🇵🇭 필리핀</button>
+              <button class="quick-btn" onclick="sendQuick('말레이시아')">🇲🇾 말레이시아</button>
+              <button class="quick-btn" onclick="sendQuick('인도네시아')">🇮🇩 인도네시아</button>
+              <button class="quick-btn" onclick="sendQuick('남아프리카공화국')">🇿🇦 남아공</button>
+              <button class="quick-btn" onclick="sendQuick('그리스')">🇬🇷 그리스</button>
+              <button class="quick-btn" onclick="sendQuick('오스트리아')">🇦🇹 오스트리아</button>
+              <button class="quick-btn" onclick="sendQuick('헝가리')">🇭🇺 헝가리</button>
+              <button class="quick-btn" onclick="sendQuick('체코')">🇨🇿 체코</button>
+              <button class="quick-btn" onclick="sendQuick('아르헨티나')">🇦🇷 아르헨티나</button>
+              <button class="quick-btn" onclick="sendQuick('독일')">🇩🇪 독일</button>
+              <button class="quick-btn" onclick="sendQuick('스페인')">🇪🇸 스페인</button>
+              <button class="quick-btn" onclick="sendQuick('중국')">🇨🇳 중국</button>
+              <button class="quick-btn" onclick="sendQuick('태국')">🇹🇭 태국</button>
+              <button class="quick-btn" onclick="sendQuick('베트남')">🇻🇳 베트남</button>
+              <button class="quick-btn" onclick="sendQuick('호주')">🇦🇺 호주</button>
+              <button class="quick-btn" onclick="sendQuick('캐나다')">🇨🇦 캐나다</button>
+              <button class="quick-btn" onclick="sendQuick('인도')">🇮🇳 인도</button>
+              <button class="quick-btn" onclick="sendQuick('브라질')">🇧🇷 브라질</button>
+              <button class="quick-btn" onclick="sendQuick('러시아')">🇷🇺 러시아</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- 입력 영역 -->
+    <footer class="input-area">
+      <div class="input-inner">
+        <div class="input-wrapper">
+          <span class="input-icon">🌐</span>
+          <input
+            type="text"
+            id="userInput"
+            class="chat-input"
+            placeholder="나라 또는 도시를 입력하세요 (예: 일본, 파리, 뉴욕…)"
+            autocomplete="off"
+            maxlength="100"
+          />
+          <button class="send-btn" id="sendBtn" title="전송">➤</button>
+        </div>
+        <p class="input-hint">Enter 키 또는 버튼을 눌러 검색하세요</p>
+      </div>
+    </footer>
+
+  </div>
+
+  <script>
+    // ════════════════════════════════════════════════
+    //  나라 데이터베이스
+    // ════════════════════════════════════════════════
+    const countryDB = {
+      '프랑스':        { flag:'🇫🇷', en:'France',           capital:'파리',           region:'서유럽',       tz:'UTC+1(CET) / +2(CEST)', kst:-8,  cur:'유로(EUR)',            rate:'약 1유로 ≈ 1,450원',         spots:['에펠탑','루브르 박물관','베르사유 궁전','몽마르트 언덕','노트르담 대성당'] },
+      '영국':          { flag:'🇬🇧', en:'United Kingdom',   capital:'런던',           region:'서유럽',       tz:'UTC+0(GMT) / +1(BST)',  kst:-9,  cur:'파운드(GBP)',          rate:'약 1파운드 ≈ 1,700원',       spots:['빅벤','버킹엄궁','타워 브리지','대영박물관','에든버러 성'] },
+      '미국':          { flag:'🇺🇸', en:'United States',    capital:'워싱턴 D.C.',    region:'북아메리카',   tz:'UTC-5~-10(지역별 상이)', kst:-14, cur:'달러(USD)',            rate:'약 1달러 ≈ 1,380원',         spots:['자유의 여신상','그랜드캐니언','라스베이거스','타임스퀘어','옐로스톤'] },
+      '일본':          { flag:'🇯🇵', en:'Japan',            capital:'도쿄',           region:'동아시아',     tz:'UTC+9(JST)',             kst:0,   cur:'엔(JPY)',             rate:'약 100엔 ≈ 930원',           spots:['도쿄 타워','후지산','교토 기온','오사카 도톤보리','나라 사슴공원'] },
+      '이탈리아':      { flag:'🇮🇹', en:'Italy',            capital:'로마',           region:'남유럽',       tz:'UTC+1(CET) / +2(CEST)', kst:-8,  cur:'유로(EUR)',            rate:'약 1유로 ≈ 1,450원',         spots:['콜로세움','피렌체 두오모','베네치아 운하','아말피 해안','폼페이 유적'] },
+      '스위스':        { flag:'🇨🇭', en:'Switzerland',      capital:'베른',           region:'중앙유럽',     tz:'UTC+1(CET) / +2(CEST)', kst:-8,  cur:'스위스프랑(CHF)',     rate:'약 1CHF ≈ 1,600원',         spots:['융프라우','루체른 카펠교','마터호른','인터라켄','제네바 분수'] },
+      '네덜란드':      { flag:'🇳🇱', en:'Netherlands',      capital:'암스테르담',     region:'서유럽',       tz:'UTC+1(CET) / +2(CEST)', kst:-8,  cur:'유로(EUR)',            rate:'약 1유로 ≈ 1,450원',         spots:['케우켄호프 튤립공원','암스테르담 운하','반 고흐 미술관','잔세스칸스 풍차','안네프랑크의 집'] },
+      '싱가포르':      { flag:'🇸🇬', en:'Singapore',        capital:'싱가포르',       region:'동남아시아',   tz:'UTC+8(SGT)',             kst:-1,  cur:'싱가포르달러(SGD)',   rate:'약 1SGD ≈ 1,030원',         spots:['마리나베이샌즈','가든스바이더베이','센토사섬','차이나타운','유니버설스튜디오'] },
+      '멕시코':        { flag:'🇲🇽', en:'Mexico',           capital:'멕시코시티',     region:'북아메리카',   tz:'UTC-6(CST)',             kst:-15, cur:'페소(MXN)',            rate:'약 1페소 ≈ 70원',            spots:['치첸이트사','테오티우아칸','과달루페 성당','칸쿤 해변','멕시코시티 역사지구'] },
+      '터키':          { flag:'🇹🇷', en:'Turkey',           capital:'앙카라',         region:'서아시아',     tz:'UTC+3(TRT)',             kst:-6,  cur:'리라(TRY)',            rate:'약 1리라 ≈ 40원',            spots:['아야소피아','카파도키아','에페소 유적','보스포루스 해협','파묵칼레'] },
+      '대만':          { flag:'🇹🇼', en:'Taiwan',           capital:'타이베이',       region:'동아시아',     tz:'UTC+8(CST)',             kst:-1,  cur:'신대만달러(TWD)',     rate:'약 1TWD ≈ 42원',            spots:['타이베이101','지우펀','예류 지질공원','타로코 협곡','아리산'] },
+      '필리핀':        { flag:'🇵🇭', en:'Philippines',      capital:'마닐라',         region:'동남아시아',   tz:'UTC+8(PST)',             kst:-1,  cur:'페소(PHP)',            rate:'약 1페소 ≈ 24원',            spots:['보라카이 해변','팔라완','초콜릿힐','인트라무로스','세부 성'] },
+      '말레이시아':    { flag:'🇲🇾', en:'Malaysia',         capital:'쿠알라룸푸르',   region:'동남아시아',   tz:'UTC+8(MYT)',             kst:-1,  cur:'링깃(MYR)',            rate:'약 1링깃 ≈ 300원',           spots:['페트로나스 타워','랑카위 섬','페낭 조지타운','키나발루산','티오만섬'] },
+      '인도네시아':    { flag:'🇮🇩', en:'Indonesia',        capital:'자카르타',       region:'동남아시아',   tz:'UTC+7~+9(지역별 상이)', kst:-2,  cur:'루피아(IDR)',          rate:'약 1000루피아 ≈ 87원',       spots:['발리 사원','보로부두르','코모도섬','롬복','국립기념탑'] },
+      '남아프리카공화국':{ flag:'🇿🇦', en:'South Africa',  capital:'프리토리아',     region:'아프리카',     tz:'UTC+2(SAST)',            kst:-7,  cur:'랜드(ZAR)',            rate:'약 1랜드 ≈ 74원',            spots:['테이블마운틴','크루거 국립공원','케이프오브굿호프','로벤섬','가든루트'] },
+      '그리스':        { flag:'🇬🇷', en:'Greece',           capital:'아테네',         region:'남유럽',       tz:'UTC+2(EET) / +3(EEST)', kst:-7,  cur:'유로(EUR)',            rate:'약 1유로 ≈ 1,450원',         spots:['아크로폴리스','산토리니','미코노스','올림피아 유적','메테오라'] },
+      '오스트리아':    { flag:'🇦🇹', en:'Austria',          capital:'빈',             region:'중앙유럽',     tz:'UTC+1(CET) / +2(CEST)', kst:-8,  cur:'유로(EUR)',            rate:'약 1유로 ≈ 1,450원',         spots:['쇤브룬 궁전','빈 오페라하우스','잘츠부르크','할슈타트','벨베데레 궁전'] },
+      '헝가리':        { flag:'🇭🇺', en:'Hungary',          capital:'부다페스트',     region:'중앙유럽',     tz:'UTC+1(CET) / +2(CEST)', kst:-8,  cur:'포린트(HUF)',          rate:'약 100HUF ≈ 380원',          spots:['부다 왕궁','어부의 요새','국회의사당','세체니 온천','발라톤 호수'] },
+      '체코':          { flag:'🇨🇿', en:'Czech Republic',   capital:'프라하',         region:'중앙유럽',     tz:'UTC+1(CET) / +2(CEST)', kst:-8,  cur:'코루나(CZK)',          rate:'약 1코루나 ≈ 60원',          spots:['프라하 성','카를교','구시가지 광장','체스키크룸로프','쿠트나호라'] },
+      '아르헨티나':    { flag:'🇦🇷', en:'Argentina',        capital:'부에노스아이레스',region:'남아메리카',  tz:'UTC-3(ART)',             kst:-12, cur:'페소(ARS)',            rate:'약 1페소 ≈ 1.5원',           spots:['이과수 폭포','파타고니아','부에노스아이레스 탱고','페리토모레노 빙하','우수아이아'] },
+      '독일':          { flag:'🇩🇪', en:'Germany',          capital:'베를린',         region:'중앙유럽',     tz:'UTC+1(CET) / +2(CEST)', kst:-8,  cur:'유로(EUR)',            rate:'약 1유로 ≈ 1,450원',         spots:['브란덴부르크 문','노이슈반슈타인 성','뮌헨 맥주축제','베를린 장벽','쾰른 대성당'] },
+      '스페인':        { flag:'🇪🇸', en:'Spain',            capital:'마드리드',       region:'남유럽',       tz:'UTC+1(CET) / +2(CEST)', kst:-8,  cur:'유로(EUR)',            rate:'약 1유로 ≈ 1,450원',         spots:['사그라다 파밀리아','알함브라 궁전','프라도 미술관','바르셀로나 해변','세비야 대성당'] },
+      '중국':          { flag:'🇨🇳', en:'China',            capital:'베이징',         region:'동아시아',     tz:'UTC+8(CST)',             kst:-1,  cur:'위안(CNY)',            rate:'약 1위안 ≈ 190원',           spots:['만리장성','자금성','황산','리장고성','장가계'] },
+      '태국':          { flag:'🇹🇭', en:'Thailand',         capital:'방콕',           region:'동남아시아',   tz:'UTC+7(ICT)',             kst:-2,  cur:'바트(THB)',            rate:'약 1바트 ≈ 40원',            spots:['왓프라깨우','치앙마이 사원','푸켓 해변','아유타야 유적','코사무이'] },
+      '베트남':        { flag:'🇻🇳', en:'Vietnam',          capital:'하노이',         region:'동남아시아',   tz:'UTC+7(ICT)',             kst:-2,  cur:'동(VND)',              rate:'약 1000동 ≈ 55원',           spots:['하롱베이','호이안 구시가','호찌민 전쟁박물관','사파 계단식 논','미선 유적'] },
+      '호주':          { flag:'🇦🇺', en:'Australia',        capital:'캔버라',         region:'오세아니아',   tz:'UTC+8~+11(지역별 상이)', kst:+1,  cur:'호주달러(AUD)',        rate:'약 1AUD ≈ 900원',            spots:['시드니 오페라하우스','그레이트배리어리프','울루루','골드코스트','멜버른 CBD'] },
+      '캐나다':        { flag:'🇨🇦', en:'Canada',           capital:'오타와',         region:'북아메리카',   tz:'UTC-3.5~-8(지역별 상이)',kst:-13, cur:'캐나다달러(CAD)',      rate:'약 1CAD ≈ 1,010원',          spots:['나이아가라 폭포','밴쿠버','밴프 국립공원','퀘벡 구시가','CN타워'] },
+      '인도':          { flag:'🇮🇳', en:'India',            capital:'뉴델리',         region:'남아시아',     tz:'UTC+5:30(IST)',          kst:-3,  cur:'루피(INR)',            rate:'약 1루피 ≈ 16원',            spots:['타지마할','자이살메르','케랄라','고아 해변','바라나시'] },
+      '브라질':        { flag:'🇧🇷', en:'Brazil',           capital:'브라질리아',     region:'남아메리카',   tz:'UTC-3(BRT)',             kst:-12, cur:'헤알(BRL)',            rate:'약 1헤알 ≈ 270원',           spots:['예수상(코르코바도)','이구아수 폭포','아마존 밀림','리우 카니발','포스 두 이구아수'] },
+      '러시아':        { flag:'🇷🇺', en:'Russia',           capital:'모스크바',       region:'동유럽/북아시아',tz:'UTC+2~+12(지역별 상이)',kst:-6,  cur:'루블(RUB)',            rate:'약 1루블 ≈ 15원',            spots:['크렘린궁','붉은광장','성바실리 성당','바이칼 호수','상트페테르부르크'] },
+    };
+
+    // 도시·영문 별칭 매핑
+    const aliases = {
+      'france':'프랑스','uk':'영국','england':'영국','britain':'영국',
+      'usa':'미국','us':'미국','america':'미국',
+      'japan':'일본','italy':'이탈리아','switzerland':'스위스',
+      'netherlands':'네덜란드','holland':'네덜란드',
+      'singapore':'싱가포르','mexico':'멕시코','turkey':'터키','taiwan':'대만',
+      'philippines':'필리핀','malaysia':'말레이시아','indonesia':'인도네시아',
+      'southafrica':'남아프리카공화국','greece':'그리스','austria':'오스트리아',
+      'hungary':'헝가리','czech':'체코','czechrepublic':'체코',
+      'argentina':'아르헨티나','germany':'독일','spain':'스페인',
+      'china':'중국','thailand':'태국','vietnam':'베트남',
+      'australia':'호주','canada':'캐나다','india':'인도',
+      'brazil':'브라질','russia':'러시아',
+      // 도시명
+      '파리':'프랑스','런던':'영국','도쿄':'일본','오사카':'일본','교토':'일본',
+      '뉴욕':'미국','로스앤젤레스':'미국','라스베가스':'미국',
+      '로마':'이탈리아','밀라노':'이탈리아','베네치아':'이탈리아',
+      '방콕':'태국','푸켓':'태국','치앙마이':'태국',
+      '베이징':'중국','상하이':'중국','홍콩':'중국',
+      '하노이':'베트남','호치민':'베트남',
+      '발리':'인도네시아','자카르타':'인도네시아',
+      '쿠알라룸푸르':'말레이시아','뭄바이':'인도','델리':'인도',
+      '남아공':'남아프리카공화국','남아프리카':'남아프리카공화국',
+      '시드니':'호주','멜버른':'호주',
+      '토론토':'캐나다','밴쿠버':'캐나다',
+      '모스크바':'러시아','상트페테르부르크':'러시아',
+      '아테네':'그리스','바르셀로나':'스페인','마드리드':'스페인',
+      '베를린':'독일','뮌헨':'독일','프랑크푸르트':'독일',
+      '빈':'오스트리아','부다페스트':'헝가리','프라하':'체코',
+      '암스테르담':'네덜란드','취리히':'스위스',
+    };
+
+    function normalize(q) {
+      const t = q.trim().toLowerCase().replace(/\s+/g,'');
+      return aliases[t] || q.trim();
+    }
+
+    function getTime() {
+      return new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'});
+    }
+
+    function scrollToBottom() {
+      const c = document.getElementById('chatContainer');
+      setTimeout(() => c.scrollTop = c.scrollHeight, 50);
+    }
+
+    function addUserMsg(text) {
+      const c = document.getElementById('chatContainer');
+      const d = document.createElement('div');
+      d.className = 'message user-message';
+      d.innerHTML = `
+        <div class="bubble user-bubble">
+          <div class="bubble-header" style="justify-content:flex-end">
+            <span class="timestamp">${getTime()}</span>
+            <span class="sender-name">나</span>
+          </div>
+          <div class="bubble-content"><p>${text}</p></div>
+        </div>
+        <div class="avatar user-avatar">👤</div>`;
+      c.appendChild(d);
+      scrollToBottom();
+    }
+
+    function addAIMsg(html) {
+      const c = document.getElementById('chatContainer');
+      const d = document.createElement('div');
+      d.className = 'message ai-message';
+      d.innerHTML = `
+        <div class="avatar ai-avatar">🤖</div>
+        <div class="bubble ai-bubble">
+          <div class="bubble-header">
+            <span class="sender-name">글로벌 여행 가이드</span>
+            <span class="timestamp">${getTime()}</span>
+          </div>
+          <div class="bubble-content">${html}</div>
+        </div>`;
+      c.appendChild(d);
+      scrollToBottom();
+    }
+
+    function showTyping() {
+      const c = document.getElementById('chatContainer');
+      const d = document.createElement('div');
+      d.className = 'message ai-message';
+      d.id = 'typingIndicator';
+      d.innerHTML = `
+        <div class="avatar ai-avatar">🤖</div>
+        <div class="bubble ai-bubble">
+          <div class="bubble-content"><p style="color:var(--text-muted);font-style:italic">⏳ 정보를 불러오는 중...</p></div>
+        </div>`;
+      c.appendChild(d);
+      scrollToBottom();
+    }
+
+    function hideTyping() {
+      const t = document.getElementById('typingIndicator');
+      if (t) t.remove();
+    }
+
+    function buildCard(info) {
+      const sign = info.kst >= 0 ? '+' : '';
+      const spots = info.spots.map(s => `
+        <div style="display:flex;align-items:center;gap:8px;padding:7px 10px;
+             background:rgba(255,255,255,0.03);border-radius:8px;
+             border-left:3px solid var(--accent2);margin-bottom:6px">
+          🗺 <span>${s}</span>
+        </div>`).join('');
+      return `
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+          <span style="font-size:2.2rem">${info.flag}</span>
+          <div>
+            <div style="font-family:'Outfit',sans-serif;font-weight:800;font-size:1.2rem;
+                 background:linear-gradient(135deg,#60a5fa,#06b6d4);
+                 -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">
+              ${info.en}
+            </div>
+            <div style="font-size:0.8rem;color:var(--text-dim)">${info.region}</div>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
+          <div style="background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.2);
+               border-radius:10px;padding:10px 12px">
+            <div style="font-size:10px;font-weight:700;letter-spacing:1px;color:#10b981;margin-bottom:4px">🏛 수도</div>
+            <div style="font-weight:600">${info.capital}</div>
+          </div>
+          <div style="background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.2);
+               border-radius:10px;padding:10px 12px">
+            <div style="font-size:10px;font-weight:700;letter-spacing:1px;color:#f59e0b;margin-bottom:4px">⏱ KST 시차</div>
+            <div style="font-weight:700;color:#f59e0b;font-family:'Outfit',sans-serif;font-size:1.1rem">${sign}${info.kst}시간</div>
+          </div>
+          <div style="background:rgba(6,182,212,0.08);border:1px solid rgba(6,182,212,0.2);
+               border-radius:10px;padding:10px 12px">
+            <div style="font-size:10px;font-weight:700;letter-spacing:1px;color:#06b6d4;margin-bottom:4px">💱 통화 / 환율</div>
+            <div style="font-size:0.85rem">${info.cur}</div>
+            <div style="font-weight:700;color:#06b6d4;font-family:'Outfit',sans-serif">${info.rate}</div>
+          </div>
+          <div style="background:rgba(139,92,246,0.08);border:1px solid rgba(139,92,246,0.2);
+               border-radius:10px;padding:10px 12px">
+            <div style="font-size:10px;font-weight:700;letter-spacing:1px;color:#a78bfa;margin-bottom:4px">🕐 시간대</div>
+            <div style="font-size:0.82rem">${info.tz}</div>
+          </div>
+        </div>
+        <div style="background:rgba(139,92,246,0.06);border:1px solid rgba(139,92,246,0.18);
+             border-radius:10px;padding:12px">
+          <div style="font-size:10px;font-weight:700;letter-spacing:1px;color:#a78bfa;margin-bottom:8px">🗼 추천 관광지 TOP ${info.spots.length}</div>
+          ${spots}
+        </div>`;
+    }
+
+    function search(raw) {
+      const q = normalize(raw);
+      addUserMsg(raw);
+      showTyping();
+      setTimeout(() => {
+        hideTyping();
+        const info = countryDB[q];
+        if (info) {
+          addAIMsg(buildCard(info));
+        } else {
+          addAIMsg(`<p>😅 <strong>${raw}</strong>에 대한 정보가 없어요.<br>다른 나라 이름이나 도시명으로 시도해 보세요!<br><em style="color:var(--text-muted)">예: 일본 / 프랑스 / 태국 / 파리 / 도쿄</em></p>`);
+        }
+      }, 600);
+    }
+
+    // ─── 이벤트 바인딩 (DOMContentLoaded 후 실행) ───
+    document.addEventListener('DOMContentLoaded', function() {
+      document.getElementById('welcomeTime').textContent = getTime();
+
+      const input = document.getElementById('userInput');
+      const btn   = document.getElementById('sendBtn');
+
+      function handleSend() {
+        const val = input.value.trim();
+        if (!val) return;
+        input.value = '';
+        search(val);
+        input.focus();
+      }
+
+      btn.addEventListener('click', handleSend);
+      input.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') handleSend();
+      });
+    });
+
+    // sendQuick은 onclick에서 직접 호출되므로 전역으로 선언
+    function sendQuick(country) {
+      const input = document.getElementById('userInput');
+      input.value = country;
+      const val = input.value.trim();
+      if (!val) return;
+      input.value = '';
+      search(val);
+    }
+  </script>
+</body>
+</html>
